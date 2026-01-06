@@ -1,0 +1,56 @@
+REM =====================================================
+REM AWS GLUE – FULL GOVERNANCE SETUP (CMD ONLY)
+REM =====================================================
+
+REM ---------- 1. VARIABLES ----------
+set REGION=us-east-1
+set DB_NAME=nyc_taxi_lake
+
+set ACCOUNT_ID=440376044042
+set ROLE_ARN=arn:aws:iam::%ACCOUNT_ID%:role/AWSGlueServiceRole-NYCTaxi
+
+set BUCKET=new-demo-bucket-sumenth-12
+set CURATED_PREFIX=curated_data/
+set S3_TARGET=s3://%BUCKET%/%CURATED_PREFIX%
+
+set CRAWLER_NAME=curated_crawler
+
+
+REM ---------- 2. CREATE DATABASE (IGNORE IF EXISTS) ----------
+aws glue create-database --region %REGION% --database-input "{\"Name\":\"%DB_NAME%\",\"Description\":\"NYC Taxi Lake database\",\"Parameters\":{\"domain\":\"mobility\",\"data_owner\":\"analytics-team\",\"classification\":\"internal\"}}"
+
+
+REM ---------- 3. UPDATE DATABASE GOVERNANCE METADATA ----------
+aws glue update-database --region %REGION% --name %DB_NAME% --database-input "{\"Name\":\"%DB_NAME%\",\"Description\":\"NYC Taxi Lake database\",\"Parameters\":{\"domain\":\"mobility\",\"data_owner\":\"analytics-team\",\"classification\":\"internal\"}}"
+
+
+REM ---------- 4. VERIFY DATABASE METADATA ----------
+aws glue get-database --region %REGION% --name %DB_NAME% --query "Database.Parameters"
+
+
+REM ---------- 5. CREATE CRAWLER (IGNORE IF EXISTS) ----------
+aws glue create-crawler --region %REGION% --name %CRAWLER_NAME% --role %ROLE_ARN% --database-name %DB_NAME% --targets "{\"S3Targets\":[{\"Path\":\"%S3_TARGET%\"}]}" --schema-change-policy "{\"UpdateBehavior\":\"UPDATE_IN_DATABASE\",\"DeleteBehavior\":\"LOG\"}"
+
+
+REM ---------- 6. UPDATE CRAWLER (SAFE RE-RUN) ----------
+aws glue update-crawler --region %REGION% --name %CRAWLER_NAME% --role %ROLE_ARN% --database-name %DB_NAME% --targets "{\"S3Targets\":[{\"Path\":\"%S3_TARGET%\"}]}" --schema-change-policy "{\"UpdateBehavior\":\"UPDATE_IN_DATABASE\",\"DeleteBehavior\":\"LOG\"}"
+
+
+REM ---------- 7. START CRAWLER ----------
+aws glue start-crawler --region %REGION% --name %CRAWLER_NAME%
+
+
+REM ---------- 8. CHECK CRAWLER STATUS ----------
+aws glue get-crawler --region %REGION% --name %CRAWLER_NAME% --query "Crawler.{State:State,LastCrawlStatus:LastCrawl.Status,Error:LastCrawl.ErrorMessage}"
+
+
+REM ---------- 9. LIST TABLES CREATED ----------
+aws glue get-tables --region %REGION% --database-name %DB_NAME% --query "TableList[].Name"
+
+
+REM ---------- 10. VERIFY TABLE LOCATION + FORMAT ----------
+aws glue get-tables --region %REGION% --database-name %DB_NAME% --query "TableList[].{Name:Name,Location:StorageDescriptor.Location,Format:StorageDescriptor.InputFormat}"
+
+
+REM ---------- END ----------
+REM Governance metadata, crawler, and catalog setup complete

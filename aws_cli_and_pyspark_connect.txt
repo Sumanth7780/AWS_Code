@@ -1,0 +1,67 @@
+
+aws s3 cp "D:\ME\sumanth\OUBT\repo\code_daily\week_2\day6_datalake_delta_raw_to_validated_glue.py" "s3://new-demo-bucket-sumenth-12/scripts/day6_datalake_delta_raw_to_validated_glue.py" --region us-east-1
+C:\Users\suman>aws glue update-job --job-name day6-raw-to-validated-delta --region us-east-1 --job-update "{\"Role\":\"arn:aws:iam::440376044042:role/AWSGlueServiceRole-NYCTaxi\",\"Command\":{\"Name\":\"glueetl\",\"ScriptLocation\":\"s3://new-demo-bucket-sumenth-12/scripts/day6_datalake_delta_raw_to_validated_glue.py\",\"PythonVersion\":\"3\"},\"GlueVersion\":\"4.0\",\"WorkerType\":\"G.1X\",\"NumberOfWorkers\":2,\"DefaultArguments\":{\"--datalake-formats\":\"delta\",\"--enable-metrics\":\"true\",\"--enable-continuous-cloudwatch-log\":\"true\",\"--TempDir\":\"s3://new-demo-bucket-sumenth-12/glue_temp/\"}}"
+{
+    "JobName": "day6-raw-to-validated-delta"
+}
+
+C:\Users\suman>aws glue start-job-run --job-name day6-raw-to-validated-delta --region us-east-1 --arguments "{\"--RAW_TRIPS_PATH\":\"s3://new-demo-bucket-sumenth-12/raw_data/yellow_tripdata/\",\"--RAW_ZONES_PATH\":\"s3://new-demo-bucket-sumenth-12/raw_data/reference/\",\"--DELTA_OUT_PATH\":\"s3://new-demo-bucket-sumenth-12/validated_data/yellow_tripdata_delta/\"}"
+{
+    "JobRunId": "jr_b8c05b2149d8a023f9fa587d88499c425042465854fa8fc24a026a9a129267b2"
+}
+
+C:\Users\suman>aws glue get-job-run --job-name day6-raw-to-validated-delta --run-id jr_b8c05b2149d8a023f9fa587d88499c425042465854fa8fc24a026a9a129267b2 --region us-east-1
+==============================
+AWS CLI + PySpark Connect Guide
+==============================
+
+DAY 6 — Create Job + Run (Raw → Validated Delta)
+6A) Create Glue job (run once)
+
+aws glue create-job --name day6-raw-to-validated-delta --role arn:aws:iam::440376044042:role/AWSGlueServiceRole-Sumanth --command "{\"Name\":\"glueetl\",\"ScriptLocation\":\"s3://new-demo-bucket-sumenth-12/scripts/day6_datalake_delta_raw_to_validated.py\",\"PythonVersion\":\"3\"}" --glue-version 4.0 --worker-type G.1X --number-of-workers 2 --region us-east-1
+
+6B) Start job run (run anytime)
+
+aws glue start-job-run --job-name day6-raw-to-validated-delta --arguments "{\"--RAW_TRIPS_PATH\":\"s3://new-demo-bucket-sumenth-12/raw_data/yellow_tripdata/\",\"--VALIDATED_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/validated_data/yellow_tripdata/\"}" --region us-east-1
+
+DAY 7 — Validated → Curated (enrichment)
+7A) Create job (run once)
+
+aws glue create-job --name day7-validated-to-curated --role arn:aws:iam::440376044042:role/AWSGlueServiceRole-Sumanth --command "{\"Name\":\"glueetl\",\"ScriptLocation\":\"s3://new-demo-bucket-sumenth-12/scripts/day7_spark_enrich_and_catalog.py\",\"PythonVersion\":\"3\"}" --glue-version 4.0 --worker-type G.1X --number-of-workers 2 --region us-east-1
+
+7B) Run job
+
+aws glue start-job-run --job-name day7-validated-delta-to-curated --region us-east-1 --arguments "{\"--VALIDATED_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/validated_data/yellow_tripdata_delta/\",\"--RAW_ZONES_CSV_PATH\":\"s3://new-demo-bucket-sumenth-12/raw_data/reference/\",\"--CURATED_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/curated_data/yellow_tripdata_enriched_delta/\"}"
+
+
+DAY 8 — Create Job + Run (DQ Gates + Rejects)
+8A) Create Glue job (run once)
+
+aaws glue create-job --name day8-dq-gates --role arn:aws:iam::440376044042:role/AWSGlueServiceRole-Sumanth --command "{\"Name\":\"glueetl\",\"ScriptLocation\":\"s3://new-demo-bucket-sumenth-12/scripts/day8_glue_quality_gates.py\",\"PythonVersion\":\"3\"}" --glue-version 4.0 --worker-type G.1X --number-of-workers 2 --region us-east-1
+
+
+8B) Start job run
+
+aws glue start-job-run --job-name day8-dq-gates --arguments "{\"--VALIDATED_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/validated_data/yellow_tripdata/\",\"--CURATED_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/curated_data/yellow_tripdata/\",\"--REJECTS_PATH\":\"s3://new-demo-bucket-sumenth-12/validated_data/rejects/\",\"--MIN_PASS_RATE\":\"0.98\"}" --region us-east-1
+
+
+
+DAY 9 — Create Job + Run (MDM Reference Dedup Outputs)
+9A) Create Glue job (run once)
+
+aws glue create-job --name day9-mdm-zones-dedup --role arn:aws:iam::440376044042:role/AWSGlueServiceRole-Sumanth --command "{\"Name\":\"glueetl\",\"ScriptLocation\":\"s3://new-demo-bucket-sumenth-12/scripts/day9_mdm_matching_dedup_engine.py\",\"PythonVersion\":\"3\"}" --glue-version 4.0 --worker-type G.1X --number-of-workers 2 --region us-east-1
+
+
+9B) Start job run
+
+aws glue start-job-run --job-name day9-mdm-zones-dedup --arguments "{\"--RAW_ZONES_CSV_PATH\":\"s3://new-demo-bucket-sumenth-12/raw_data/reference/taxi_zone_lookup.csv\",\"--VALIDATED_REF_OUT_PATH\":\"s3://new-demo-bucket-sumenth-12/validated_data/reference\"}" --region us-east-1
+
+DAY 10 — Create Job + Run (Master + Lifecycle + Audit)
+10A) Create Glue job (run once)
+
+aws glue create-job --name day10-master-lifecycle-audit --role arn:aws:iam::440376044042:role/AWSGlueServiceRole-Sumanth --command "{\"Name\":\"glueetl\",\"ScriptLocation\":\"s3://new-demo-bucket-sumenth-12/scripts/day10_mdm_lifecycle_audit_orphans.py\",\"PythonVersion\":\"3\"}" --glue-version 4.0 --worker-type G.1X --number-of-workers 2 --region us-east-1
+
+
+10B) Start job run
+
+aws glue start-job-run --job-name day10-master-lifecycle-audit --arguments "{\"--CURATED_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/curated_data/yellow_tripdata/\",\"--MASTER_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/master_data/yellow_tripdata/\",\"--AUDIT_DELTA_PATH\":\"s3://new-demo-bucket-sumenth-12/master_data/audit_log/\"}" --region us-east-1
