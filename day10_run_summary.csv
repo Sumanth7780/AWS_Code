@@ -1,0 +1,2 @@
+audit_history_out_path,curated_trips_path,job_name,lifecycle_snapshot_path,master_zones_path,orphans_count,orphans_out_path,generated_at_utc
+s3://new-demo-bucket-sumenth-12/audit/day10_delta_history,s3://new-demo-bucket-sumenth-12/curated_data/yellow_tripdata_delta,day10-mdm-lifecycle-audit-orphans,s3://new-demo-bucket-sumenth-12/governance/lifecycle_snapshot,s3://new-demo-bucket-sumenth-12/master_data/taxi_zones_delta,384,s3://new-demo-bucket-sumenth-12/governance/orphans,2026-01-06 03:00:53.841
